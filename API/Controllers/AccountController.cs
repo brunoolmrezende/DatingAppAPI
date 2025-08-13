@@ -14,8 +14,7 @@ public class AccountController(AppDbContext dbContext) : DatingAppController
     [Route("register")]
     public async Task<ActionResult<AppUser>> Register([FromBody] RegisterDto request)
     {
-        var existingEmail = await dbContext.Users.AnyAsync(u => u.Email == request.Email);
-        if (existingEmail)
+        if (await EmailExists(request.Email))
         {
             return BadRequest("Email already exists");
         }
@@ -25,7 +24,7 @@ public class AccountController(AppDbContext dbContext) : DatingAppController
         var user = new AppUser
         {
             Email = request.Email,
-            DisplayName =  request.DisplayName,
+            DisplayName = request.DisplayName,
             PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(request.Password)),
             PasswordSalt = hmac.Key
         };
@@ -34,5 +33,10 @@ public class AccountController(AppDbContext dbContext) : DatingAppController
         await dbContext.SaveChangesAsync();
 
         return Created(string.Empty, user);
+    }
+
+    private async Task<bool> EmailExists(string email)
+    {
+        return await dbContext.Users.AnyAsync(user => user.Email.ToLower() == email.ToLower());
     }
 }
