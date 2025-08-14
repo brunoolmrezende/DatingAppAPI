@@ -3,16 +3,17 @@ using System.Text;
 using API.Data;
 using API.DTOs;
 using API.Entities;
+using API.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers;
 
-public class AccountController(AppDbContext dbContext) : DatingAppController
+public class AccountController(AppDbContext dbContext, ITokenService tokenService) : DatingAppController
 {
     [HttpPost]
     [Route("register")]
-    public async Task<ActionResult<AppUser>> Register([FromBody] RegisterDto request)
+    public async Task<ActionResult<UserDto>> Register([FromBody] RegisterDto request)
     {
         if (await EmailExists(request.Email))
         {
@@ -32,12 +33,20 @@ public class AccountController(AppDbContext dbContext) : DatingAppController
         await dbContext.Users.AddAsync(user);
         await dbContext.SaveChangesAsync();
 
-        return Created(string.Empty, user);
+        var registeredUser = new UserDto
+        {
+            Id = user.Id,
+            DisplayName = user.DisplayName,
+            Email = user.Email,
+            Token = tokenService.CreateToken(user)
+        };
+
+        return Created(string.Empty, registeredUser);
     }
 
     [HttpPost]
     [Route("login")]
-    public async Task<ActionResult<AppUser>> Login([FromBody] LoginDto request)
+    public async Task<ActionResult<UserDto>> Login([FromBody] LoginDto request)
     {
         var user = await dbContext.Users.SingleOrDefaultAsync(user => user.Email.ToLower() == request.Email.ToLower());
 
@@ -58,7 +67,13 @@ public class AccountController(AppDbContext dbContext) : DatingAppController
             }
         }
 
-        return Ok(user);
+        return new UserDto
+        {
+            Id = user.Id,
+            DisplayName = user.DisplayName,
+            Email = user.Email,
+            Token = tokenService.CreateToken(user)
+        };
     }
 
     private async Task<bool> EmailExists(string email)
