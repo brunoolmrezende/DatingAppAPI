@@ -3,6 +3,7 @@ using System.Text;
 using API.Data;
 using API.DTOs;
 using API.Entities;
+using API.Extensions;
 using API.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,15 +34,7 @@ public class AccountController(AppDbContext dbContext, ITokenService tokenServic
         await dbContext.Users.AddAsync(user);
         await dbContext.SaveChangesAsync();
 
-        var registeredUser = new UserDto
-        {
-            Id = user.Id,
-            DisplayName = user.DisplayName,
-            Email = user.Email,
-            Token = tokenService.CreateToken(user)
-        };
-
-        return Created(string.Empty, registeredUser);
+        return Created(string.Empty, user.ToDto(tokenService));
     }
 
     [HttpPost]
@@ -67,13 +60,7 @@ public class AccountController(AppDbContext dbContext, ITokenService tokenServic
             }
         }
 
-        return new UserDto
-        {
-            Id = user.Id,
-            DisplayName = user.DisplayName,
-            Email = user.Email,
-            Token = tokenService.CreateToken(user)
-        };
+        return user.ToDto(tokenService);
     }
 
     private async Task<bool> EmailExists(string email)
